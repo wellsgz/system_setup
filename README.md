@@ -42,17 +42,14 @@ This is the primary script. It performs all actions listed in the features secti
 
 ```bash
 curl -fsSL [https://raw.githubusercontent.com/wellsgz/system_setup/main/system.sh](https://raw.githubusercontent.com/wellsgz/system_setup/main/system.sh) | bash
-
-```
-curl -fsSL https://raw.githubusercontent.com/wesllgp/system_setup/main/system.sh
 ```
 
 **Super User Utility (Optional)**
 
 This script grants the current user passwordless `sudo` privileges and locks the root account's password. Use with caution.
 
-```
-curl -fsSL https://raw.githubusercontent.com/wesllgp/system_setup/main/super_user
+```bash
+curl -fsSL [https://raw.githubusercontent.com/wesllgp/system_setup/main/super_user.sh](https://raw.githubusercontent.com/wellsgz/system_setup/main/super_user.sh) | sudo bash
 ```
 
 ## 📄 Scripts Overview
