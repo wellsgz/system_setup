@@ -1,4 +1,3 @@
-```markdown
 # My Personal Linux Setup Scripts
 
 This repository contains a collection of personal shell scripts designed to automate setup tasks.
@@ -98,5 +97,3 @@ After the `system.sh` script finishes, you will need to perform a few manual ste
 Licensed under the MIT License.
 
 ⭐ 🔗 👀 📋
-```
-
