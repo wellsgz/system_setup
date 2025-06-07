@@ -3,13 +3,12 @@
 # Post-installation script for Debian, openSUSE, and Arch-based systems.
 #
 # This script will:
-# 1. Detect the operating system.
-# 2. Install essential packages, including zsh, git, firewalld, fail2ban, and neovim.
-# 3. Configure a secure SSH jail for fail2ban.
-# 4. Enable and start firewall and fail2ban services.
-# 5. Install and configure NvChad for Neovim.
-# 6. Install and configure Oh My Zsh, Powerlevel10k, and Zsh plugins.
-# 7. Configure the .zshrc file with the new theme, plugins, and aliases.
+# 1. Detect the operating system and install essential packages.
+# 2. Install and enable Tailscale, firewalld, and fail2ban.
+# 3. Configure firewall rules for Tailscale and a secure SSH jail for fail2ban.
+# 4. Install and configure NvChad for Neovim.
+# 5. Install and configure Oh My Zsh, Powerlevel10k, and Zsh plugins.
+# 6. Configure the .zshrc file with themes, plugins, and aliases.
 #
 # To Use:
 #   curl -fsSL <RAW_URL> | bash
@@ -38,35 +37,62 @@ error() {
 
 # --- OS Detection and Package Installation ---
 detect_and_install_packages() {
-    local os_id
     if [ -f /etc/os-release ]; then
-        os_id=$(grep -oP '^ID=\K\w+' /etc/os-release)
+        # Expose os-release vars to the script
+        . /etc/os-release
     else
         error "Cannot detect the operating system. /etc/os-release not found."
     fi
 
-    # Added neovim to the package list
+    # Base packages, some OSs will add to this list
     local packages="zsh git htop rsync wget fish curl firewalld fail2ban neovim"
-    info "Detected OS: $os_id. Installing packages: $packages"
+    info "Detected OS: $ID. Installing packages..."
 
-    case "$os_id" in
+    case "$ID" in
         debian|ubuntu|pop)
+            # Tailscale is installed via a separate script for Debian-based distros
             sudo apt-get update
             sudo apt-get install -y $packages
             ;;
         opensuse-tumbleweed|opensuse-leap|opensuse)
+            # Tailscale is in the main openSUSE repos
+            packages="$packages tailscale"
             sudo zypper refresh
             sudo zypper install -y $packages
             ;;
         arch)
+            # Tailscale is in the Arch community repo
+            packages="$packages tailscale"
             sudo pacman -Syu --noconfirm $packages
             ;;
         *)
-            error "Unsupported operating system: $os_id"
+            error "Unsupported operating system: $ID"
             ;;
     esac
-    success "Packages installed."
+    success "Base packages installed."
 }
+
+# --- Tailscale Installation ---
+install_tailscale() {
+    # Re-source /etc/os-release to ensure $ID is available
+    . /etc/os-release
+    info "Setting up Tailscale..."
+
+    case "$ID" in
+        debian|ubuntu|pop)
+            info "Installing Tailscale via official script for Debian-based OS..."
+            curl -fsSL https://tailscale.com/install.sh | sh
+            ;;
+        *)
+            info "Tailscale was installed via package manager."
+            ;;
+    esac
+
+    info "Enabling the Tailscale service..."
+    sudo systemctl enable --now tailscale
+    success "Tailscale service is enabled."
+}
+
 
 # --- Firewall and Security Configuration ---
 configure_security_services() {
@@ -89,6 +115,11 @@ EOT
     sudo systemctl enable --now firewalld
     sudo systemctl enable --now fail2ban
 
+    info "Adding Tailscale interface to firewalld trusted zone..."
+    # This command is idempotent and safer than change-interface
+    sudo firewall-cmd --permanent --zone=trusted --add-interface=tailscale0
+    sudo firewall-cmd --reload
+
     success "Security services configured and enabled."
 }
 
@@ -101,7 +132,6 @@ install_neovim_config() {
         info "Installing NvChad starter configuration for Neovim..."
         git clone https://github.com/NvChad/starter "$nvim_config_dir"
         info "Running initial Neovim setup for NvChad (headless)..."
-        # This runs the Lazy plugin manager to sync plugins and then quits.
         nvim --headless "+Lazy! sync" +qa
         success "Neovim with NvChad is configured."
     fi
@@ -110,10 +140,12 @@ install_neovim_config() {
 # --- Main Setup Logic ---
 main() {
     detect_and_install_packages
+    install_tailscale
     configure_security_services
     install_neovim_config
 
-    # --- Install Oh My Zsh ---
+    # --- Zsh and Oh My Zsh Setup ---
+    info "Starting Zsh and Oh My Zsh setup..."
     if [ -d "$HOME/.oh-my-zsh" ]; then
         warn "Oh My Zsh is already installed. Skipping."
     else
@@ -123,8 +155,6 @@ main() {
     fi
 
     local zsh_custom="$HOME/.oh-my-zsh/custom"
-
-    # --- Install Powerlevel10k Theme ---
     if [ -d "$zsh_custom/themes/powerlevel10k" ]; then
         warn "Powerlevel10k theme is already installed. Skipping."
     else
@@ -133,7 +163,6 @@ main() {
         success "Powerlevel10k theme installed."
     fi
 
-    # --- Install Powerlevel10k Configuration ---
     if [ -f "$HOME/.p10k.zsh" ]; then
         warn "Powerlevel10k config file (.p10k.zsh) already exists. Skipping."
     else
@@ -142,8 +171,6 @@ main() {
         success "Powerlevel10k configuration downloaded."
     fi
 
-
-    # --- Install Zsh Plugins ---
     info "Installing Zsh plugins..."
     local plugins_dir="$zsh_custom/plugins"
     local plugin_repos=(
@@ -162,12 +189,10 @@ main() {
             git clone "$repo" "$plugins_dir/$plugin_name"
         fi
     done
-    success "All plugins handled."
+    success "All Zsh plugins handled."
 
-    # --- Configure .zshrc ---
     info "Configuring .zshrc file..."
     local zshrc_file="$HOME/.zshrc"
-
     sed -i 's/^ZSH_THEME=".*"/ZSH_THEME="powerlevel10k\/powerlevel10k"/' "$zshrc_file"
     local plugins_list="git zsh-completions zsh-autosuggestions history-substring-search zsh-syntax-highlighting thefuck extract docker"
     sed -i "s/^plugins=(.*/plugins=($plugins_list)/" "$zshrc_file"
@@ -176,7 +201,6 @@ main() {
       echo -e "\n# To customize prompt, run \`p10k configure\` or edit ~/.p10k.zsh.\n[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh" >> "$zshrc_file"
     fi
 
-    # Adding aliases, with vi aliased to nvim.
     if ! grep -q "# --- Custom Aliases ---" "$zshrc_file"; then
         info "Adding custom aliases to .zshrc"
         cat <<EOT >> "$zshrc_file"
@@ -189,17 +213,16 @@ alias sudo='sudo '
 # alias z='zellij attach || zellij'
 EOT
     else
-        # If the alias section exists, ensure the vi alias is correct.
         sed -i "s/alias vi='vim'/alias vi='nvim'/" "$zshrc_file"
         warn "Custom aliases section already exists. Ensured 'vi' is aliased to 'nvim'."
     fi
     success ".zshrc configuration complete."
 
-    # --- Final Instructions (Refined Output) ---
+    # --- Final Instructions ---
     GREEN='\033[0;32m'
     YELLOW='\033[0;33m'
     BOLD='\033[1m'
-    NC='\033[0m' # No Color
+    NC='\033[0m'
 
     echo
     echo -e "${YELLOW}-----------------------------------------------------${NC}"
@@ -208,18 +231,18 @@ EOT
     echo
     echo -e "${BOLD}IMPORTANT NEXT STEPS:${NC}"
     echo
-    echo -e "1. Change your default shell to Zsh with the command:"
+    echo -e "1. ${BOLD}Connect to your Tailscale network${NC} by running:"
+    echo -e "   ${GREEN}sudo tailscale up${NC}"
+    echo
+    echo -e "2. ${BOLD}Change your default shell to Zsh${NC} with the command:"
     echo -e "   ${GREEN}chsh -s \$(which zsh)${NC}"
     echo
-    echo -e "2. You must ${BOLD}LOG OUT and LOG BACK IN${NC} for the change to take effect."
+    echo -e "3. You must ${BOLD}LOG OUT and LOG BACK IN${NC} for all changes to take effect."
     echo
-    echo -e "3. NvChad is installed. The next time you run ${GREEN}nvim${NC}, you may see"
-    echo -e "   additional setup steps. Follow any on-screen instructions."
+    echo -e "4. NvChad is installed. The next time you run ${GREEN}nvim${NC}, follow any on-screen instructions."
     echo
-    echo -e "4. You can re-run the Zsh prompt wizard any time by typing:"
-    echo -e "   ${GREEN}p10k configure${NC}"
+    echo -e "5. You can re-run the Zsh prompt wizard any time by typing: ${GREEN}p10k configure${NC}"
     echo
 }
 
-# Run the main function of the script
 main
