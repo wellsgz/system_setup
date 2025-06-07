@@ -1,9 +1,9 @@
 #!/bin/bash
 #
-# This script configures passwordless sudo for the user who executes it.
-# It creates a dedicated file in /etc/sudoers.d/ for the user.
+# This script configures passwordless sudo for the user who executes it
+# and locks the root account's password for enhanced security.
 #
-# WARNING: This significantly reduces the security of your system.
+# WARNING: Granting passwordless sudo reduces a layer of security.
 # Use it only in environments where you understand and accept the risk.
 #
 # USAGE: This script MUST be run with sudo.
@@ -30,30 +30,32 @@ if [ -z "$SUDO_USER" ]; then
 fi
 
 USERNAME=$SUDO_USER
-SUDOERS_FILE="/etc/sudoers.d/90-$USERNAME-nopasswd" # A numbered prefix ensures predictable ordering
+SUDOERS_FILE="/etc/sudoers.d/90-$USERNAME-nopasswd"
 
 echo "-> Configuring passwordless sudo for user: '$USERNAME'"
 
-# --- Check if a configuration file already exists ---
+# --- Check if the user configuration already exists ---
 if [ -f "$SUDOERS_FILE" ]; then
-    echo "-> WARNING: A sudoers file already exists for this user at '$SUDOERS_FILE'."
-    echo "-> No changes were made."
-    exit 0
+    echo "-> WARNING: Sudoers file already exists for this user at '$SUDOERS_FILE'."
+else
+    # --- Create the sudoers file with the correct content ---
+    # This line grants the user passwordless access for all commands.
+    CONTENT="$USERNAME ALL=(ALL) NOPASSWD:ALL"
+    
+    echo "-> Creating new sudoers file..."
+    echo "$CONTENT" > "$SUDOERS_FILE"
+    
+    # --- Set correct file permissions (CRITICAL) ---
+    # The file must be read-only (0440) and owned by root to be secure and trusted by the system.
+    echo "-> Setting file permissions to 0440 (read-only for root)."
+    chmod 0440 "$SUDOERS_FILE"
 fi
 
-# --- Create the sudoers file with the correct content ---
-# This line grants the user passwordless access for all commands.
-CONTENT="$USERNAME ALL=(ALL) NOPASSWD:ALL"
-
-echo "-> Creating new sudoers file..."
-echo "$CONTENT" > "$SUDOERS_FILE"
-
-# --- Set correct file permissions (CRITICAL) ---
-# The file must be read-only (0440) and owned by root to be secure and trusted by the system.
-echo "-> Setting file permissions to 0440 (read-only for root)..."
-chmod 0440 "$SUDOERS_FILE"
+# --- Lock the root account password to prevent direct login ---
+echo "-> Locking the root account password for security."
+passwd -l root
 
 echo
 echo "✅ SUCCESS: User '$USERNAME' can now run sudo commands without a password."
-echo "-> Configuration saved to: $SUDOERS_FILE"
+echo "✅ SUCCESS: The root account password has been locked."
 echo
