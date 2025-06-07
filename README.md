@@ -1,40 +1,47 @@
 # My Personal Linux Setup Scripts
 
-This repository contains a collection of personal shell scripts designed to automate setup tasks.
+This repository contains a collection of personal shell scripts designed to automate the setup and configuration of my preferred development environment on fresh Linux installations. The goal is to create a consistent, secure, and productive environment with a single command.
 
-## 🔧 Features of 'system.sh'
+---
 
-The main script ('system.sh') is an all-in-one utility that automates the following:
+## 🚀 Features of `system.sh`
 
-• **🖥️ Host Detection:** Automatically identifies if the host is running Debian, or
-• **📦 Package Installation:** Installs a curated list of essential packages:
-  - Shell: "zsh", "fish"
-  - Development: "git", "vim", "nodejs"
-  - Editor: "neovim"
-• **🔐 Security Hardening:**
-  - Installs and enables "ufw" (firewall)
-  - Installs and enables "fail2ban"
-  - Deploys "chkrootkit", "rkhunter" to protect SSH from brute-force attacks
-• **🧹 SSH Hardening:** Hardens SSH configuration for enhanced security.
-  - Installs the TailScale client using the recommended method for the detected
-    package manager, including SSH daemon "service"
-  - Configures "firewalld" to trust the "tailscale" interface.
-• **🔧 Zsh & Shell Customization:**
-  - Installs and configures "oh-my-zsh"
-  - Installs the **PowerLevel10k** theme for a powerful and fast prompt.
-  - Enables auto-completion and plugins like "zsh-autosuggestions" and "zsh-extract"
-  - Changes default shell to zsh and creates useful aliases.
-• **🔧 Neovim Configuration:**
-  - Installs the **NvChad** configuration for a beautiful and feature-rich Neovim
-    using the initial plugin type professionally.
+The main script (`system.sh`) is an all-in-one utility that automates the following:
 
-## 🚀 Quick Start: One-liner Execution
+-   **🖥️ OS Detection:** Automatically identifies if the host is running Debian, Ubuntu, Arch Linux, or openSUSE.
+-   **📦 Package Installation:** Installs a curated list of essential packages:
+    -   Shells: `zsh`, `fish`
+    -   Tools: `git`, `htop`, `rsync`, `wget`, `curl`
+    -   Editor: `neovim`
+-   **🛡️ Security Hardening:**
+    -   Installs and enables `firewalld`.
+    -   Installs and enables `fail2ban`.
+    -   Deploys a custom `fail2ban` jail to protect SSH from brute-force attacks.
+-   **🌐 Networking with Tailscale:**
+    -   Installs the Tailscale client using the recommended method for the detected OS.
+    -   Enables the `tailscaled` service.
+    -   Configures `firewalld` to trust the `tailscale0` interface.
+-   **🐚 Zsh & Shell Customization:**
+    -   Installs **Oh My Zsh**.
+    -   Installs the **Powerlevel10k** theme for a powerful and fast prompt.
+    -   Installs essential Zsh plugins like `zsh-autosuggestions` and `zsh-syntax-highlighting`.
+    -   Configures `.zshrc` with useful aliases and settings.
+-   **✍️ Neovim Configuration:**
+    -   Installs the **NvChad** configuration for a beautiful and feature-rich Neovim experience out of the box.
+    -   Runs the initial plugin sync non-interactively.
 
-To run these scripts, you can execute them directly from this GitHub repository. G
+---
+
+## ⚡ Quick Start: One-Liner Execution
+
+To run these scripts, you can execute them directly from this GitHub repository. Open a terminal on the target machine and use the appropriate command.
 
 ### Main System Setup
 
-This is the primary script. It performs all actions listed in the features section
+This is the primary script. It performs all actions listed in the features section.
+
+```bash
+curl -fsSL [https://raw.githubusercontent.com/wellsgz/system_setup/main/system.sh](https://raw.githubusercontent.com/wellsgz/system_setup/main/system.sh) | bash
 
 ```
 curl -fsSL https://raw.githubusercontent.com/wesllgp/system_setup/main/system.sh
@@ -50,9 +57,9 @@ curl -fsSL https://raw.githubusercontent.com/wesllgp/system_setup/main/super_use
 
 ## 📄 Scripts Overview
 
-• **system.sh:** The main, all-in-one script for setting up a full system. It can be run on a fresh install to configure everything from security to the shell environment. To view its code, see this repository.
+- **system.sh:** The main, all-in-one script for setting up a full system. It can be run on a fresh install to configure everything from security to the shell environment. To view its code, see this repository.
 
-• **super_user.sh:** An optional standalone utility for administrative convenience. It configures passwordless `sudo` and disables direct root login via password as a security measure. To use this, see the `super-user.sh` file.
+- **super_user.sh:** An optional standalone utility for administrative convenience. It configures passwordless `sudo` and disables direct root login via password as a security measure. To use this, see the `super-user.sh` file.
 
 ## ⚠️ Security Notice
 
