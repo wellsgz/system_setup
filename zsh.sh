@@ -11,9 +11,8 @@
 # 6. Configure the .zshrc file with the new theme, plugins, and aliases.
 #
 # To Use:
-#   1. Save this file as `setup.sh`
-#   2. Make it executable: `chmod +x setup.sh`
-#   3. Run the script: `./setup.sh`
+#   1. Host this file on GitHub (or save it locally).
+#   2. Run with: curl -fsSL <RAW_URL> | bash
 #
 
 # Exit immediately if a command exits with a non-zero status.
@@ -164,22 +163,34 @@ EOT
 
     success ".zshrc configuration complete."
 
-    # --- Final Instructions ---
+    # --- Final Instructions (Refined Output) ---
+    
+    # Define colors and styles for a cleaner output
+    GREEN='\033[0;32m'
+    YELLOW='\033[0;33m'
+    BOLD='\033[1m'
+    NC='\033[0m' # No Color
+
     echo
-    info "-----------------------------------------------------"
-    info "                    Setup Complete!                  "
-    info "-----------------------------------------------------"
+    echo -e "${YELLOW}-----------------------------------------------------${NC}"
+    echo -e "            ${BOLD}🚀 Setup Complete! 🚀${NC}            "
+    echo -e "${YELLOW}-----------------------------------------------------${NC}"
     echo
-    echo "IMPORTANT NEXT STEPS:"
-    echo "1. Change your default shell to Zsh with the command:"
-    echo "   \033[32mchsh -s \$(which zsh)\033[0m"
+    echo -e "${BOLD}IMPORTANT NEXT STEPS:${NC}"
     echo
-    echo "2. You must LOG OUT and LOG BACK IN for the change to take effect."
+    echo -e "1. Change your default shell to Zsh with the command:"
+    # Note: We escape the '$' in \$(which zsh) so it gets printed literally for the user to copy.
+    echo -e "   ${GREEN}chsh -s \$(which zsh)${NC}"
     echo
-    echo "3. The first time you launch the new terminal, Powerlevel10k may ask to install a font. It's recommended you say 'yes'."
-    echo "   You can always re-run the prompt configuration wizard later by typing: \033[32mp10k configure\033[0m"
+    echo -e "2. You must ${BOLD}LOG OUT and LOG BACK IN${NC} for the change to take effect."
+    echo
+    echo -e "3. The first time you launch the new terminal, Powerlevel10k may ask"
+    echo -e "   to install a font. It is ${BOLD}highly recommended${NC} you say 'yes'."
+    echo
+    echo -e "4. You can re-run the prompt configuration wizard any time by typing:"
+    echo -e "   ${GREEN}p10k configure${NC}"
     echo
 }
 
-# Run the main function
+# Run the main function of the script
 main
