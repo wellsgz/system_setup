@@ -74,12 +74,6 @@ After the `system.sh` script finishes, you will need to perform a few manual ste
    sudo tailscale up
 ```
 
-1. **Connect to Tailscale:**
-
-```
-   sudo tailscale up
-```
-
 2. **Change Default Shell:**
 
 ```
