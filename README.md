@@ -41,7 +41,7 @@ To run these scripts, you can execute them directly from this GitHub repository.
 This is the primary script. It performs all actions listed in the features section.
 
 ```bash
-curl -fsSL [https://raw.githubusercontent.com/wellsgz/system_setup/main/system.sh](https://raw.githubusercontent.com/wellsgz/system_setup/main/system.sh) | bash
+curl -fsSL https://raw.githubusercontent.com/wellsgz/system_setup/main/system.sh | bash
 ```
 
 **Super User Utility (Optional)**
@@ -49,7 +49,7 @@ curl -fsSL [https://raw.githubusercontent.com/wellsgz/system_setup/main/system.s
 This script grants the current user passwordless `sudo` privileges and locks the root account's password. Use with caution.
 
 ```bash
-curl -fsSL [https://raw.githubusercontent.com/wesllgp/system_setup/main/super_user.sh](https://raw.githubusercontent.com/wellsgz/system_setup/main/super_user.sh) | sudo bash
+curl -fsSL https://raw.githubusercontent.com/wellsgz/system_setup/main/super_user.sh | sudo bash
 ```
 
 ## 📄 Scripts Overview
