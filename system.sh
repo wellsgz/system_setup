@@ -4,15 +4,15 @@
 #
 # This script will:
 # 1. Detect the operating system.
-# 2. Install essential packages (zsh, git, htop, etc.).
-# 3. Install Oh My Zsh non-interactively.
-# 4. Install the Powerlevel10k theme and its recommended configuration.
-# 5. Install several popular Zsh plugins.
-# 6. Configure the .zshrc file with the new theme, plugins, and aliases.
+# 2. Install essential packages, including zsh, git, firewalld, fail2ban, and neovim.
+# 3. Configure a secure SSH jail for fail2ban.
+# 4. Enable and start firewall and fail2ban services.
+# 5. Install and configure NvChad for Neovim.
+# 6. Install and configure Oh My Zsh, Powerlevel10k, and Zsh plugins.
+# 7. Configure the .zshrc file with the new theme, plugins, and aliases.
 #
 # To Use:
-#   1. Host this file on GitHub (or save it locally).
-#   2. Run with: curl -fsSL <RAW_URL> | bash
+#   curl -fsSL <RAW_URL> | bash
 #
 
 # Exit immediately if a command exits with a non-zero status.
@@ -36,18 +36,17 @@ error() {
     exit 1
 }
 
-
 # --- OS Detection and Package Installation ---
 detect_and_install_packages() {
     local os_id
     if [ -f /etc/os-release ]; then
-        # Read the ID field from the os-release file
         os_id=$(grep -oP '^ID=\K\w+' /etc/os-release)
     else
         error "Cannot detect the operating system. /etc/os-release not found."
     fi
 
-    local packages="zsh git htop rsync wget fish curl"
+    # Added neovim to the package list
+    local packages="zsh git htop rsync wget fish curl firewalld fail2ban neovim"
     info "Detected OS: $os_id. Installing packages: $packages"
 
     case "$os_id" in
@@ -69,22 +68,60 @@ detect_and_install_packages() {
     success "Packages installed."
 }
 
+# --- Firewall and Security Configuration ---
+configure_security_services() {
+    info "Configuring security services (firewalld & fail2ban)..."
+
+    local jail_config_path="/etc/fail2ban/jail.d/sshd.local"
+    info "Creating fail2ban sshd jail at $jail_config_path"
+    sudo mkdir -p /etc/fail2ban/jail.d/
+    sudo tee "$jail_config_path" > /dev/null <<EOT
+[sshd]
+enabled = true
+backend = systemd
+filter = sshd
+maxretry = 2
+findtime = 1d
+bantime = 1y
+EOT
+
+    info "Enabling and starting firewalld and fail2ban services..."
+    sudo systemctl enable --now firewalld
+    sudo systemctl enable --now fail2ban
+
+    success "Security services configured and enabled."
+}
+
+# --- Neovim Configuration ---
+install_neovim_config() {
+    local nvim_config_dir="$HOME/.config/nvim"
+    if [ -d "$nvim_config_dir" ]; then
+        warn "Neovim configuration already exists at $nvim_config_dir. Skipping."
+    else
+        info "Installing NvChad starter configuration for Neovim..."
+        git clone https://github.com/NvChad/starter "$nvim_config_dir"
+        info "Running initial Neovim setup for NvChad (headless)..."
+        # This runs the Lazy plugin manager to sync plugins and then quits.
+        nvim --headless "+Lazy! sync" +qa
+        success "Neovim with NvChad is configured."
+    fi
+}
 
 # --- Main Setup Logic ---
 main() {
     detect_and_install_packages
+    configure_security_services
+    install_neovim_config
 
     # --- Install Oh My Zsh ---
     if [ -d "$HOME/.oh-my-zsh" ]; then
         warn "Oh My Zsh is already installed. Skipping."
     else
         info "Installing Oh My Zsh..."
-        # Use --unattended to install without interaction
         sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)" "" --unattended
         success "Oh My Zsh installed."
     fi
 
-    # Define the custom path for themes and plugins
     local zsh_custom="$HOME/.oh-my-zsh/custom"
 
     # --- Install Powerlevel10k Theme ---
@@ -109,7 +146,6 @@ main() {
     # --- Install Zsh Plugins ---
     info "Installing Zsh plugins..."
     local plugins_dir="$zsh_custom/plugins"
-    # An array of plugin repositories to install
     local plugin_repos=(
         "https://github.com/zsh-users/zsh-autosuggestions"
         "https://github.com/zsh-users/zsh-history-substring-search"
@@ -118,7 +154,6 @@ main() {
     )
 
     for repo in "${plugin_repos[@]}"; do
-        # Extract the plugin name from the repo URL to create the directory name
         local plugin_name=$(basename "$repo" .git)
         if [ -d "$plugins_dir/$plugin_name" ]; then
             warn "Plugin '$plugin_name' is already installed. Skipping."
@@ -133,39 +168,34 @@ main() {
     info "Configuring .zshrc file..."
     local zshrc_file="$HOME/.zshrc"
 
-    # Set the theme to Powerlevel10k
     sed -i 's/^ZSH_THEME=".*"/ZSH_THEME="powerlevel10k\/powerlevel10k"/' "$zshrc_file"
-
-    # Set the plugins list
     local plugins_list="git zsh-completions zsh-autosuggestions history-substring-search zsh-syntax-highlighting thefuck extract docker"
     sed -i "s/^plugins=(.*/plugins=($plugins_list)/" "$zshrc_file"
 
-    # Add Powerlevel10k's initialization script source if not present
     if ! grep -q 'source ~/.p10k.zsh' "$zshrc_file"; then
       echo -e "\n# To customize prompt, run \`p10k configure\` or edit ~/.p10k.zsh.\n[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh" >> "$zshrc_file"
     fi
 
-    # Add aliases if they aren't already in the file
+    # Adding aliases, with vi aliased to nvim.
     if ! grep -q "# --- Custom Aliases ---" "$zshrc_file"; then
         info "Adding custom aliases to .zshrc"
         cat <<EOT >> "$zshrc_file"
 
 # --- Custom Aliases ---
-alias vi='vim'
+alias vi='nvim'
 alias sudo='sudo '
 # alias dig='doggo'
 # alias p='proxychains4'
 # alias z='zellij attach || zellij'
 EOT
     else
-        warn "Custom aliases section already found in .zshrc. Skipping."
+        # If the alias section exists, ensure the vi alias is correct.
+        sed -i "s/alias vi='vim'/alias vi='nvim'/" "$zshrc_file"
+        warn "Custom aliases section already exists. Ensured 'vi' is aliased to 'nvim'."
     fi
-
     success ".zshrc configuration complete."
 
     # --- Final Instructions (Refined Output) ---
-    
-    # Define colors and styles for a cleaner output
     GREEN='\033[0;32m'
     YELLOW='\033[0;33m'
     BOLD='\033[1m'
@@ -179,15 +209,14 @@ EOT
     echo -e "${BOLD}IMPORTANT NEXT STEPS:${NC}"
     echo
     echo -e "1. Change your default shell to Zsh with the command:"
-    # Note: We escape the '$' in \$(which zsh) so it gets printed literally for the user to copy.
     echo -e "   ${GREEN}chsh -s \$(which zsh)${NC}"
     echo
     echo -e "2. You must ${BOLD}LOG OUT and LOG BACK IN${NC} for the change to take effect."
     echo
-    echo -e "3. The first time you launch the new terminal, Powerlevel10k may ask"
-    echo -e "   to install a font. It is ${BOLD}highly recommended${NC} you say 'yes'."
+    echo -e "3. NvChad is installed. The next time you run ${GREEN}nvim${NC}, you may see"
+    echo -e "   additional setup steps. Follow any on-screen instructions."
     echo
-    echo -e "4. You can re-run the prompt configuration wizard any time by typing:"
+    echo -e "4. You can re-run the Zsh prompt wizard any time by typing:"
     echo -e "   ${GREEN}p10k configure${NC}"
     echo
 }
