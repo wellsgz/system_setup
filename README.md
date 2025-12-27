@@ -56,11 +56,20 @@ This script grants the current user passwordless `sudo` privileges and locks the
 curl -fsSL https://raw.githubusercontent.com/wellsgz/system_setup/main/super_user.sh | sudo bash
 ```
 
+### Cloud VM First-Time Setup (as root)
+
+If you're logged into a fresh cloud VM as root, this script will create a new user with SSH access and sudo rights:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/wellsgz/system_setup/main/super_user.sh | bash
+# Follow the prompt to enter your username, then SSH as that user and run system.sh
+```
+
 ## 📄 Scripts Overview
 
-- **system.sh:** The main, all-in-one script for setting up a full system. It can be run on a fresh install to configure everything from security to the shell environment. To view its code, see this repository.
+- **system.sh:** The main, all-in-one script for setting up a full system. It can be run on a fresh install to configure everything from security to the shell environment.
 
-- **super_user.sh:** An optional standalone utility for administrative convenience. It configures passwordless `sudo` and disables direct root login via password as a security measure. To use this, see the `super_user.sh` file.
+- **super_user.sh:** A cloud VM onboarding utility. When run as root, it creates a new user with SSH keys copied from root and passwordless sudo. When run by a user with sudo, it confirms the setup is complete.
 
 ## ⚠️ Security Notice
 
