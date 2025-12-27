@@ -61,7 +61,8 @@ filter_installed_packages() {
         if ! is_installed "$pkg"; then
             to_install+=("$pkg")
         else
-            info "Package '$pkg' is already installed. Skipping."
+            # Output to stderr so it doesn't mix with the package list
+            echo -e "\033[34m[INFO]\033[0m Package '$pkg' is already installed. Skipping." >&2
         fi
     done
     echo "${to_install[@]}"
