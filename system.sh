@@ -330,6 +330,19 @@ EOT
     fi
     success ".zshrc configuration complete."
 
+    # --- Change default shell to Zsh ---
+    local current_shell
+    current_shell=$(getent passwd "$USER" | cut -d: -f7)
+    local zsh_path
+    zsh_path=$(which zsh)
+    if [ "$current_shell" = "$zsh_path" ]; then
+        info "Default shell is already Zsh."
+    else
+        info "Changing default shell to Zsh..."
+        sudo chsh -s "$zsh_path" "$USER"
+        success "Default shell changed to Zsh."
+    fi
+
     # --- Final Instructions ---
     GREEN='\033[0;32m'
     YELLOW='\033[0;33m'
@@ -346,14 +359,11 @@ EOT
     echo -e "1. ${BOLD}Connect to your Tailscale network${NC} by running:"
     echo -e "   ${GREEN}sudo tailscale up${NC}"
     echo
-    echo -e "2. ${BOLD}Change your default shell to Zsh${NC} with the command:"
-    echo -e "   ${GREEN}chsh -s \$(which zsh)${NC}"
+    echo -e "2. You must ${BOLD}LOG OUT and LOG BACK IN${NC} for all changes to take effect."
     echo
-    echo -e "3. You must ${BOLD}LOG OUT and LOG BACK IN${NC} for all changes to take effect."
+    echo -e "3. NvChad is installed. The next time you run ${GREEN}nvim${NC}, follow any on-screen instructions."
     echo
-    echo -e "4. NvChad is installed. The next time you run ${GREEN}nvim${NC}, follow any on-screen instructions."
-    echo
-    echo -e "5. You can re-run the Zsh prompt wizard any time by typing: ${GREEN}p10k configure${NC}"
+    echo -e "4. You can re-run the Zsh prompt wizard any time by typing: ${GREEN}p10k configure${NC}"
     echo
 }
 

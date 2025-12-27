@@ -78,17 +78,11 @@ After the `system.sh` script finishes, you will need to perform a few manual ste
    sudo tailscale up
 ```
 
-2. **Change Default Shell:**
+2. **Log Out & Log In:** You must log out of your session and log back in for the new shell and all group permissions (including Docker) to take effect.
 
-```
-   chsh -s $(which zsh)
-```
+3. **First Neovim Run:** The first time you run `nvim` may perform final setup steps.
 
-3. **Log Out & Log In:** You must log out of your session and log back in for the new shell and all group permissions to take effect.
-
-4. **First Neovim Run:** The first time you run `:NvChad` may perform final setup steps.
-
-5. **Customize Zsh Prompt (Optional):** To change the PowerLevel10k prompt style, run:
+4. **Customize Zsh Prompt (Optional):** To change the PowerLevel10k prompt style, run:
 
 ```
    p10k configure
