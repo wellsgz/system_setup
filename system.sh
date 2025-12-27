@@ -35,6 +35,38 @@ error() {
     exit 1
 }
 
+# --- Check if a package is installed (cross-distro) ---
+is_installed() {
+    local pkg="$1"
+    case "$ID" in
+        debian|ubuntu|pop)
+            dpkg -s "$pkg" &>/dev/null
+            ;;
+        opensuse-tumbleweed|opensuse-leap|opensuse)
+            rpm -q "$pkg" &>/dev/null
+            ;;
+        arch)
+            pacman -Qi "$pkg" &>/dev/null
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# --- Filter out already installed packages ---
+filter_installed_packages() {
+    local -a to_install=()
+    for pkg in "$@"; do
+        if ! is_installed "$pkg"; then
+            to_install+=("$pkg")
+        else
+            info "Package '$pkg' is already installed. Skipping."
+        fi
+    done
+    echo "${to_install[@]}"
+}
+
 # --- OS Detection and Package Installation ---
 detect_and_install_packages() {
     if [ -f /etc/os-release ]; then
@@ -45,25 +77,40 @@ detect_and_install_packages() {
     fi
 
     # Added fzf to the base package list
-    local packages="zsh git htop rsync wget fish curl firewalld fail2ban neovim fzf"
-    info "Detected OS: $ID. Installing packages..."
+    local -a packages=(zsh git htop rsync wget fish curl firewalld fail2ban neovim fzf)
+    info "Detected OS: $ID. Checking for packages to install..."
+
+    # Filter out already installed packages
+    local -a to_install
+    read -ra to_install <<< "$(filter_installed_packages "${packages[@]}")"
+
+    if [ ${#to_install[@]} -eq 0 ]; then
+        success "All base packages are already installed."
+        return
+    fi
+
+    info "Installing packages: ${to_install[*]}"
 
     case "$ID" in
         debian|ubuntu|pop)
             # Tailscale is installed via a separate script for Debian-based distros
             sudo apt-get update
-            sudo apt-get install -y $packages
+            sudo apt-get install -y "${to_install[@]}"
             ;;
         opensuse-tumbleweed|opensuse-leap|opensuse)
             # Tailscale is in the main openSUSE repos
-            packages="$packages tailscale"
+            if ! is_installed tailscale; then
+                to_install+=(tailscale)
+            fi
             sudo zypper refresh
-            sudo zypper install -y $packages
+            sudo zypper install -y "${to_install[@]}"
             ;;
         arch)
             # Tailscale is in the Arch community repo
-            packages="$packages tailscale"
-            sudo pacman -Syu --noconfirm $packages
+            if ! is_installed tailscale; then
+                to_install+=(tailscale)
+            fi
+            sudo pacman -Syu --noconfirm "${to_install[@]}"
             ;;
         *)
             error "Unsupported operating system: $ID"
@@ -94,6 +141,58 @@ install_tailscale() {
     success "Tailscale service is enabled."
 }
 
+# --- Docker Installation ---
+install_docker() {
+    . /etc/os-release
+    info "Checking Docker installation..."
+
+    if command -v docker &>/dev/null; then
+        success "Docker is already installed. Skipping."
+    else
+        info "Installing Docker..."
+        case "$ID" in
+            debian|ubuntu|pop)
+                # Install using official Docker repository
+                sudo apt-get update
+                sudo apt-get install -y ca-certificates curl gnupg
+                sudo install -m 0755 -d /etc/apt/keyrings
+                curl -fsSL "https://download.docker.com/linux/$ID/gpg" | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+                sudo chmod a+r /etc/apt/keyrings/docker.gpg
+                echo \
+                    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$ID \
+                    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+                    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+                sudo apt-get update
+                sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+                ;;
+            opensuse-tumbleweed|opensuse-leap|opensuse)
+                sudo zypper install -y docker docker-compose
+                ;;
+            arch)
+                sudo pacman -S --noconfirm docker docker-compose
+                ;;
+            *)
+                warn "Docker installation not supported for $ID. Skipping."
+                return
+                ;;
+        esac
+        success "Docker installed."
+    fi
+
+    # Enable Docker service
+    info "Enabling Docker service..."
+    sudo systemctl enable --now docker
+
+    # Add current user to docker group
+    if ! groups "$USER" | grep -q docker; then
+        info "Adding user '$USER' to docker group..."
+        sudo usermod -aG docker "$USER"
+        success "User added to docker group. Log out and back in to apply."
+    else
+        info "User '$USER' is already in docker group."
+    fi
+}
+
 
 # --- Firewall and Security Configuration ---
 configure_security_services() {
@@ -114,6 +213,8 @@ EOT
 
     info "Enabling and starting firewalld and fail2ban services..."
     sudo systemctl enable --now firewalld
+    # Wait for firewalld to be fully active before configuring
+    sudo systemctl is-active --quiet firewalld || sleep 2
     sudo systemctl enable --now fail2ban
 
     info "Adding Tailscale interface to firewalld trusted zone..."
@@ -143,6 +244,7 @@ main() {
     detect_and_install_packages
     install_tailscale
     configure_security_services
+    install_docker
     install_neovim_config
 
     # --- Zsh and Oh My Zsh Setup ---
@@ -151,7 +253,7 @@ main() {
         warn "Oh My Zsh is already installed. Skipping."
     else
         info "Installing Oh My Zsh..."
-        sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)" "" --unattended
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
         success "Oh My Zsh installed."
     fi
 
@@ -179,12 +281,13 @@ main() {
         "https://github.com/zsh-users/zsh-autosuggestions"
         "https://github.com/zsh-users/zsh-history-substring-search"
         "https://github.com/zsh-users/zsh-completions"
-        "https://github.com/zsh-users/zsh-syntax-highlighting.git"
-        "https://github.com/Aloxaf/fzf-tab.git"
+        "https://github.com/zsh-users/zsh-syntax-highlighting"
+        "https://github.com/Aloxaf/fzf-tab"
     )
 
     for repo in "${plugin_repos[@]}"; do
-        local plugin_name=$(basename "$repo" .git)
+        local plugin_name
+        plugin_name=$(basename "$repo" .git)
         if [ -d "$plugins_dir/$plugin_name" ]; then
             warn "Plugin '$plugin_name' is already installed. Skipping."
         else
@@ -196,10 +299,14 @@ main() {
 
     info "Configuring .zshrc file..."
     local zshrc_file="$HOME/.zshrc"
+    if [ ! -f "$zshrc_file" ]; then
+        warn ".zshrc file not found. Creating a basic one..."
+        touch "$zshrc_file"
+    fi
     sed -i 's/^ZSH_THEME=".*"/ZSH_THEME="powerlevel10k\/powerlevel10k"/' "$zshrc_file"
     
-    # Updated plugins_list to include sudo, fzf, and fzf-tab (at the end)
-    local plugins_list="git zsh-completions zsh-autosuggestions history-substring-search zsh-syntax-highlighting thefuck extract docker sudo fzf fzf-tab"
+    # Updated plugins_list (removed thefuck as it's not available on all distros)
+    local plugins_list="git zsh-completions zsh-autosuggestions history-substring-search zsh-syntax-highlighting extract docker sudo fzf fzf-tab"
     sed -i "s/^plugins=(.*/plugins=($plugins_list)/" "$zshrc_file"
 
     if ! grep -q 'source ~/.p10k.zsh' "$zshrc_file"; then

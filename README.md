@@ -9,10 +9,14 @@ This repository contains a collection of personal shell scripts designed to auto
 The main script (`system.sh`) is an all-in-one utility that automates the following:
 
 -   **🖥️ OS Detection:** Automatically identifies if the host is running Debian, Ubuntu, Arch Linux, or openSUSE.
--   **📦 Package Installation:** Installs a curated list of essential packages:
+-   **📦 Smart Package Installation:** Checks which packages are already installed and only installs missing ones:
     -   Shells: `zsh`, `fish`
-    -   Tools: `git`, `htop`, `rsync`, `wget`, `curl`
+    -   Tools: `git`, `htop`, `rsync`, `wget`, `curl`, `fzf`
     -   Editor: `neovim`
+-   **🐳 Docker & Docker Compose:**
+    -   Installs Docker using the official repository (Debian/Ubuntu) or native packages (Arch/openSUSE).
+    -   Installs Docker Compose.
+    -   Enables the Docker service and adds your user to the `docker` group.
 -   **🛡️ Security Hardening:**
     -   Installs and enables `firewalld`.
     -   Installs and enables `fail2ban`.
@@ -56,7 +60,7 @@ curl -fsSL https://raw.githubusercontent.com/wellsgz/system_setup/main/super_use
 
 - **system.sh:** The main, all-in-one script for setting up a full system. It can be run on a fresh install to configure everything from security to the shell environment. To view its code, see this repository.
 
-- **super_user.sh:** An optional standalone utility for administrative convenience. It configures passwordless `sudo` and disables direct root login via password as a security measure. To use this, see the `super-user.sh` file.
+- **super_user.sh:** An optional standalone utility for administrative convenience. It configures passwordless `sudo` and disables direct root login via password as a security measure. To use this, see the `super_user.sh` file.
 
 ## ⚠️ Security Notice
 
